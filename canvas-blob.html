@@ -1,0 +1,107 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+  </head>
+  <body onLoad="loaded()">
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <button id="goButton" type="button" onclick="goButtonClick()">Go!</button>
+
+    <script type="text/javascript">
+      var canvas, context, imageData, blob, started, intervalId, frames, start, cos;
+
+      function loaded()
+      {
+          canvas = document.getElementById("canvas");
+          context = canvas.getContext("2d");
+          imageData = context.createImageData(canvas.width, canvas.height);
+
+          precalculateCosine();
+          blob = new Blob(canvas.width / 2, canvas.height / 2);
+
+          goButtonClick();
+      }
+
+      function precalculateCosine()
+      {
+          cos = new Array();
+          var radianFactor = 2 * Math.PI / 512; // [0, 512] -> [0, 2*Pi]
+          for(var i = 0; i < 512; i++)
+          {
+              cos[i] = Math.floor(127 * Math.cos(i * radianFactor));
+          }
+      }
+
+      function Blob(x, y)
+      {
+          this.x = x;
+          this.y = y;
+          this.xDirection = 0;
+          this.yDirection = 0;
+      }
+
+      Blob.prototype.update = function()
+      {
+          this.x += this.xDirection;
+          if (this.x >= canvas.width || this.x < 0)
+              this.xDirection *= -1;
+          this.y += this.yDirection;
+          if (this.y >= canvas.height || this.y < 0)
+              this.yDirection *= -1;
+      };
+
+      function draw()
+      {
+          var index = 0;
+          var width = canvas.width
+          var height = canvas.height
+          var yBlob = ~~blob.y;
+          var xBlob = ~~blob.x;
+          for(var y = 0; y < height; y++)
+          {
+              for(var x = 0; x < width; x++)
+              {
+                  //var dist = Math.abs(x - xBlob) + Math.abs(y - yBlob);
+                  var dx = x - xBlob;
+                  var dy = y - yBlob;
+                  var dist = Math.floor((dx*dx + dy*dy)) >> 9;
+                  dist += frames*5;
+                  var cosine = ~~cos[dist % 512];
+                  var halfCosine = cosine >> 1;
+                  imageData.data[index++] = 0; // red
+                  imageData.data[index++] = 127 + cosine; // green
+                  imageData.data[index++] = 127 + cosine; // blue
+                  imageData.data[index++] = 0xFF; // alpha
+              }
+          }
+
+          context.putImageData(imageData, 0, 0);
+
+          frames++;
+          var elapsed = (new Date().getTime() - start.getTime()) / 1000;
+          var fps = frames / elapsed;
+          context.fillText("FPS: " + fps, canvas.width - 50, canvas.height - 10)
+
+          blob.update();
+      }
+
+      function goButtonClick()
+      {
+          var button = document.getElementById('goButton');
+          if (!started)
+          {
+              started = true;
+              frames = 0;
+              start = new Date();
+              intervalId = setInterval(draw, 0); // in practice the browser clamps this to a higher value.  See https://developer.mozilla.org/en/DOM/window.setTimeout#Minimum_delay_and_timeout_nesting
+              button.innerHTML= "Stop!";
+          }
+          else
+          {
+              started = false;
+              clearInterval(intervalId);
+              button.innerHTML = "Go!";
+          }
+      }
+    </script>
+  </body>
+</html>
